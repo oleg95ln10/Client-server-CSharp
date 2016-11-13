@@ -10,45 +10,52 @@ namespace Client
 {
     class Program
     {
-        // адрес и порт сервера, к которому будем подключаться
-        static int port = 8005; // порт сервера
-        static string address = "127.0.0.1"; // адрес сервера
+        const int port = 8888;
+        const string address = "127.0.0.1";
         static void Main(string[] args)
         {
+            Console.Write("Введите свое имя:");
+            string userName = Console.ReadLine();
+            TcpClient client = null;
             try
             {
-                IPEndPoint ipPoint = new IPEndPoint(IPAddress.Parse(address), port);
+                client = new TcpClient(address, port);
+                NetworkStream stream = client.GetStream();
 
-                Socket socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-                // подключаемся к удаленному хосту
-                socket.Connect(ipPoint);
-                Console.Write("Введите сообщение:");
-                string message = Console.ReadLine();
-                byte[] data = Encoding.Unicode.GetBytes(message);
-                socket.Send(data);
-
-                // получаем ответ
-                data = new byte[256]; // буфер для ответа
-                StringBuilder builder = new StringBuilder();
-                int bytes = 0; // количество полученных байт
-
-                do
+                while (true)
                 {
-                    bytes = socket.Receive(data, data.Length, 0);
-                    builder.Append(Encoding.Unicode.GetString(data, 0, bytes));
-                }
-                while (socket.Available > 0);
-                Console.WriteLine("ответ сервера: " + builder.ToString());
+                    Console.Write(userName + ": ");
+                    // ввод сообщения
+                    string message = Console.ReadLine();
+                    message = String.Format("{0}: {1}", userName, message);
+                    // преобразуем сообщение в массив байтов
+                    byte[] data = Encoding.Unicode.GetBytes(message);
+                    // отправка сообщения
+                    stream.Write(data, 0, data.Length);
 
-                // закрываем сокет
-                socket.Shutdown(SocketShutdown.Both);
-                socket.Close();
+                    // получаем ответ
+                    data = new byte[64]; // буфер для получаемых данных
+                    StringBuilder builder = new StringBuilder();
+                    int bytes = 0;
+                    do
+                    {
+                        bytes = stream.Read(data, 0, data.Length);
+                        builder.Append(Encoding.Unicode.GetString(data, 0, bytes));
+                    }
+                    while (stream.DataAvailable);
+
+                    message = builder.ToString();
+                    Console.WriteLine("Сервер: {0}", message);
+                }
             }
             catch (Exception ex)
             {
                 Console.WriteLine(ex.Message);
             }
-            Console.Read();
+            finally
+            {
+                client.Close();
+            }
         }
     }
 }
